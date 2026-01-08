@@ -16,7 +16,8 @@ services:
       - ZOOM_HOST=${ZOOM_HOST:-https://zoom.us}
       - ZOOM_SECRET_TOKEN=${ZOOM_SECRET_TOKEN}
       - PUBLIC_URL=${PUBLIC_URL}
-      - FRONTEND_URL=http://frontend:3000
+      - FRONTEND_URL=${PUBLIC_URL}
+      - FRONTEND_INTERNAL_URL=http://frontend:3000
       - RTMS_SERVER_URL=http://rtms:8080
       - ZOOM_REDIRECT_URL=${ZOOM_REDIRECT_URL}
       - SESSION_SECRET=${SESSION_SECRET}
@@ -68,9 +69,9 @@ services:
     # No external port mapping - accessed through backend
     environment:
       - PORT=8080
-      # The @zoom/rtms SDK requires these specific environment variable names
-      - ZM_RTMS_CLIENT=${ZOOM_APP_CLIENT_ID}
-      - ZM_RTMS_SECRET=${ZOOM_APP_CLIENT_SECRET}
+      - ZOOM_APP_CLIENT_ID=${ZOOM_APP_CLIENT_ID}
+      - ZOOM_APP_CLIENT_SECRET=${ZOOM_APP_CLIENT_SECRET}
+      - BACKEND_URL=http://backend:3001
       - NODE_ENV=${NODE_ENV:-development}
     volumes:
       # Mount source code for hot reload

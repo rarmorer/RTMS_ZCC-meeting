@@ -1,0 +1,122 @@
+.engagement-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.engagement-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Engagement-specific status styling */
+.engagement-container .status-value {
+  color: #333;
+}
+
+.engagement-container .status-value.success {
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* Status section styling */
+.status-section {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f3f0ff;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+}
+
+.status-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.2em;
+  color: #764ba2;
+}
+
+.status-section p {
+  margin: 8px 0;
+  color: #333;
+}
+
+/* Consumer section styling */
+.consumer-section {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f3f0ff;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+}
+
+.consumer-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.2em;
+  color: #764ba2;
+}
+
+.consumer-section p {
+  margin: 8px 0;
+  color: #333;
+}
+
+/* Consumers list styling */
+.consumers-list {
+  margin-top: 20px;
+}
+
+.consumers-list h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.2em;
+  color: #764ba2;
+}
+
+.consumer-item {
+  padding: 12px;
+  margin: 8px 0;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+}
+
+.consumer-item p {
+  margin: 4px 0;
+  color: #333;
+}
+
+/* Engagement-specific footer */
+.engagement-container .footer {
+  background: linear-gradient(135deg, #f3f0ff 0%, #e8dcff 100%);
+}
+
+.engagement-container .footer-text {
+  color: #764ba2;
+  font-weight: 500;
+}
+
+/* RTMS info specific to engagements */
+.engagement-container .rtms-info {
+  border-left: 3px solid #667eea;
+}
+
+.engagement-container .rtms-info .info-text {
+  color: #764ba2;
+}
+
+/* Adjust RTMS status for engagement context */
+.engagement-container .rtms-status-alert.ready {
+  background: #f3f0ff;
+  border: 2px solid #667eea;
+}
+
+.engagement-container .rtms-status-alert.ready .rtms-status-text strong {
+  color: #5a4b9e;
+}
+
+/* Warning text for transfers */
+.engagement-container .warning-text {
+  color: #ff9800;
+  font-weight: 500;
+  padding: 10px;
+  background: #fff3e0;
+  border-radius: 6px;
+  margin: 10px 0;
+}

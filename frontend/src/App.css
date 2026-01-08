@@ -16,6 +16,22 @@
   overflow: hidden;
 }
 
+/* Loading and unsupported states */
+.loading-container,
+.unsupported-container {
+  padding: 40px;
+  text-align: center;
+}
+
+.loading-message h2 {
+  color: #667eea;
+  margin-bottom: 10px;
+}
+
+.loading-message p {
+  color: #666;
+}
+
 .header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -343,18 +359,6 @@
 .badge-end {
   background: #f44336;
   color: white;
-}
-
-.consumer-info {
-  background: #f9f9f9;
-  padding: 12px;
-  margin: 8px 0;
-  border-radius: 6px;
-  border-left: 3px solid #2196f3;
-}
-
-.consumer-info p {
-  margin: 4px 0;
 }
 
 @media (max-width: 600px) {
