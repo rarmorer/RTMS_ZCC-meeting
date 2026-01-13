@@ -1,5 +1,4 @@
 import React from 'react';
-import AIAssistant from './AIAssistant';
 import './Engagement.css';
 
 function Engagement({
@@ -8,7 +7,12 @@ function Engagement({
   rtmsStatus,
   message,
   error,
-  simulatedTranscripts
+  rtmsActive,
+  isRtmsLoading,
+  engagementStarted,
+  setEngagementStarted,
+  onStartRTMS,
+  onStopRTMS
 }) {
   return (
     <div className="engagement-container">
@@ -24,26 +28,26 @@ function Engagement({
       )}
 
       {/* RTMS Status Alert */}
-      <div className={`rtms-status-alert ${rtmsStatus}`}>
+      <div className={`rtms-status-alert ${rtmsActive ? 'capturing' : rtmsStatus}`}>
         <div className="rtms-status-icon">
-          {rtmsStatus === 'capturing' && '🔴'}
-          {rtmsStatus === 'ready' && '🟢'}
+          {rtmsActive && '🔴'}
+          {!rtmsActive && rtmsStatus === 'ready' && '🟢'}
           {rtmsStatus === 'waiting' && '⚪'}
           {rtmsStatus === 'error' && '🔴'}
         </div>
         <div className="rtms-status-text">
-          {rtmsStatus === 'capturing' && (
+          {rtmsActive && (
             <>
               <strong>RTMS ACTIVE - AUDIO BEING CAPTURED</strong>
               <br />
               <span className="rtms-status-detail">Real-time audio and transcripts are being recorded</span>
             </>
           )}
-          {rtmsStatus === 'ready' && (
+          {!rtmsActive && rtmsStatus === 'ready' && (
             <>
               <strong>RTMS READY</strong>
               <br />
-              <span className="rtms-status-detail">Capturing engagement activity</span>
+              <span className="rtms-status-detail">Click Start RTMS button below to begin capturing</span>
             </>
           )}
           {rtmsStatus === 'waiting' && (
@@ -63,17 +67,65 @@ function Engagement({
         </div>
       </div>
 
+      {/* RTMS Control Button */}
+      <div className="section rtms-control-section">
+        <h2>RTMS Control</h2>
+
+        {/* Manual Engagement Status Toggle */}
+        <div className="engagement-toggle">
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={engagementStarted}
+              onChange={(e) => setEngagementStarted(e.target.checked)}
+              className="engagement-checkbox"
+            />
+            <span className="toggle-text">Engagement Started</span>
+          </label>
+          <p className="toggle-hint">
+            Check this box when your engagement begins to enable RTMS controls
+          </p>
+        </div>
+
+        <div className="rtms-control">
+          <button
+            className={`rtms-button ${rtmsActive ? 'stop' : 'start'}`}
+            onClick={rtmsActive ? onStopRTMS : onStartRTMS}
+            disabled={isRtmsLoading || !engagementStarted}
+          >
+            {isRtmsLoading ? (
+              <>
+                <span className="button-icon">⏳</span>
+                {rtmsActive ? 'Stopping...' : 'Starting...'}
+              </>
+            ) : rtmsActive ? (
+              <>
+                <span className="button-icon">⏹</span>
+                Stop RTMS
+              </>
+            ) : (
+              <>
+                <span className="button-icon">▶</span>
+                Start RTMS
+              </>
+            )}
+          </button>
+          <p className="rtms-hint">
+            {!engagementStarted
+              ? 'Check "Engagement Started" above to enable RTMS controls'
+              : rtmsActive
+              ? 'RTMS is currently active and capturing audio'
+              : 'Click to start RTMS and begin audio capture'
+            }
+          </p>
+        </div>
+      </div>
+
       {message && (
         <div className="message-box">
           {message}
         </div>
       )}
-
-      {/* AI Assistant */}
-      {/* <AIAssistant
-        isCapturing={rtmsStatus === 'capturing'}
-        simulatedTranscripts={simulatedTranscripts}
-      /> */}
 
       {/* Engagement Status */}
       <div className="section">
@@ -89,7 +141,7 @@ function Engagement({
           </div>
           <div className="status-item">
             <span className="status-label">RTMS:</span>
-            <span className="status-value success">Auto-Enabled</span>
+            <span className="status-value success">Manual Control</span>
           </div>
         </div>
       </div>
@@ -143,21 +195,26 @@ function Engagement({
         <h2>RTMS Information</h2>
         <div className="rtms-info">
           <p className="info-text">
-            <strong>RTMS is automatically enabled</strong> based on your Zoom account settings.
+            <strong>Manual RTMS Control</strong> - Start and stop RTMS capture on demand.
           </p>
-          <h4>What gets captured automatically:</h4>
+          <h4>What gets captured when RTMS is active:</h4>
           <ul>
-            <li>Live audio streams (OPUS codec, 16kHz)</li>
+            <li>Live audio streams (L16 codec, 16kHz)</li>
             <li>Real-time transcripts with timestamps</li>
             <li>Speaker identification (agent + consumer)</li>
             <li>Engagement metadata</li>
           </ul>
+          <h4>How it works:</h4>
+          <ol>
+            <li>When engagement becomes active, the Start RTMS button appears</li>
+            <li>Click <strong>Start RTMS</strong> to initiate audio capture</li>
+            <li>Zoom will send webhooks to start the RTMS connection</li>
+            <li>Click <strong>Stop RTMS</strong> to end the capture session</li>
+            <li>Audio and transcript data is saved to the server</li>
+          </ol>
           <p className="note">
             All data is stored on the backend RTMS server at <code>rtms/data/</code> indexed by engagement ID.
-            Data is automatically saved when the engagement ends.
-          </p>
-          <p className="note">
-            <strong>No manual controls needed</strong> - RTMS connects automatically when webhooks are received.
+            Data is automatically saved when RTMS stops or the engagement ends.
           </p>
         </div>
       </div>
