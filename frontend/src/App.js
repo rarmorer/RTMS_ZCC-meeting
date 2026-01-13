@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import zoomSdk from '@zoom/appssdk';
-import io from 'socket.io-client';
 import Engagement from './components/Engagement';
 import './App.css';
 
@@ -11,32 +10,6 @@ function App() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [rtmsStatus, setRtmsStatus] = useState('waiting');
-  const [simulatedTranscripts, setSimulatedTranscripts] = useState([]);
-
-  // Connect to WebSocket for real-time transcripts
-  useEffect(() => {
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
-    const socket = io(backendUrl, {
-      withCredentials: true
-    });
-
-    socket.on('connect', () => {
-      console.log('✅ Connected to backend WebSocket');
-    });
-
-    socket.on('transcript-data', (transcript) => {
-      console.log('📝 Received transcript:', transcript);
-      setSimulatedTranscripts(prev => [...prev, transcript]);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('❌ Disconnected from backend WebSocket');
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
 
   // Initialize Zoom SDK
   useEffect(() => {
@@ -59,13 +32,11 @@ function App() {
           ]
         });
 
-        console.log('Zoom SDK configured:', configResponse);
         setZoomInitialized(true);
         setRtmsStatus('ready');
         setMessage('Zoom SDK initialized for Contact Center');
 
         zoomSdk.onEngagementStatusChange(async (event) => {
-          console.log('Engagement status changed:', event);
           const newStatus = event.engagementStatus;
           setEngagementStatus(newStatus);
 
@@ -111,7 +82,6 @@ function App() {
         rtmsStatus={rtmsStatus}
         message={message}
         error={error}
-        simulatedTranscripts={simulatedTranscripts}
       />
     </div>
   );

@@ -1,5 +1,4 @@
 import React from 'react';
-import AIAssistant from './AIAssistant';
 import './Engagement.css';
 
 function Engagement({
@@ -7,8 +6,7 @@ function Engagement({
   engagementStatus,
   rtmsStatus,
   message,
-  error,
-  simulatedTranscripts
+  error
 }) {
   return (
     <div className="engagement-container">
@@ -25,18 +23,12 @@ function Engagement({
 
       {/* RTMS Status Alert */}
       <div className={`rtms-status-alert ${rtmsStatus}`}>
-        <div className="rtms-status-icon">
-          {rtmsStatus === 'capturing' && '🔴'}
-          {rtmsStatus === 'ready' && '🟢'}
-          {rtmsStatus === 'waiting' && '⚪'}
-          {rtmsStatus === 'error' && '🔴'}
-        </div>
         <div className="rtms-status-text">
           {rtmsStatus === 'capturing' && (
             <>
               <strong>RTMS ACTIVE - AUDIO BEING CAPTURED</strong>
               <br />
-              <span className="rtms-status-detail">Real-time audio and transcripts are being recorded</span>
+              <span className="rtms-status-detail">Real-time audio is being recorded</span>
             </>
           )}
           {rtmsStatus === 'ready' && (
@@ -68,12 +60,6 @@ function Engagement({
           {message}
         </div>
       )}
-
-      {/* AI Assistant */}
-      {/* <AIAssistant
-        isCapturing={rtmsStatus === 'capturing'}
-        simulatedTranscripts={simulatedTranscripts}
-      /> */}
 
       {/* Engagement Status */}
       <div className="section">
@@ -114,27 +100,6 @@ function Engagement({
               <p><strong>Direction:</strong> {engagementStatus.direction}</p>
             </div>
           )}
-{/* 
-          {consumerContext && (
-            <div className="consumer-section">
-              <h3>Consumer Information</h3>
-              <p><strong>Name:</strong> {consumerContext.consumerName || 'N/A'}</p>
-              <p><strong>Phone:</strong> {consumerContext.consumerPhone || 'N/A'}</p>
-            </div>
-          )} */}
-
-          {/* {engagementContext.consumers && engagementContext.consumers.length > 0 && (
-            <div className="consumers-list">
-              <h3>Consumers</h3>
-              {engagementContext.consumers.map((consumer, index) => (
-                <div key={index} className="consumer-item">
-                  {consumer.consumerName && <p><strong>Name:</strong> {consumer.consumerName}</p>}
-                  {consumer.consumerPhone && <p><strong>Phone:</strong> {consumer.consumerPhone}</p>}
-                  {consumer.consumerEmail && <p><strong>Email:</strong> {consumer.consumerEmail}</p>}
-                </div>
-              ))}
-            </div>
-          )} */}
         </div>
       )}
 
@@ -147,13 +112,11 @@ function Engagement({
           </p>
           <h4>What gets captured automatically:</h4>
           <ul>
-            <li>Live audio streams (OPUS codec, 16kHz)</li>
-            <li>Real-time transcripts with timestamps</li>
-            <li>Speaker identification (agent + consumer)</li>
+            <li>Live audio streams (16kHz, 16-bit, mono WAV)</li>
             <li>Engagement metadata</li>
           </ul>
           <p className="note">
-            All data is stored on the backend RTMS server at <code>rtms/data/</code> indexed by engagement ID.
+            All data is stored on the backend RTMS server at <code>rtms/data/audio/</code> indexed by engagement ID.
             Data is automatically saved when the engagement ends.
           </p>
           <p className="note">

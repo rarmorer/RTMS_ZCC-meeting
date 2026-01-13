@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { mkdirSync, existsSync, createWriteStream } from 'fs';
+import { mkdirSync, existsSync } from 'fs';
 import dotenv from 'dotenv';
 import wav from 'wav';
 import express from 'express';
@@ -17,14 +17,11 @@ const PORT = process.env.PORT || 8080;
 const CLIENT_ID = process.env.ZOOM_APP_CLIENT_ID;
 const CLIENT_SECRET = process.env.ZOOM_APP_CLIENT_SECRET;
 
-// console.log('credentials', CLIENT_ID, CLIENT_SECRET)
-
 // Ensure data directories exist
 const dataDir = join(__dirname, 'data');
 const audioDir = join(dataDir, 'audio');
-const transcriptsDir = join(dataDir, 'transcripts');
 
-[dataDir, audioDir, transcriptsDir].forEach(dir => {
+[dataDir, audioDir].forEach(dir => {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -48,8 +45,6 @@ function connectToSignalingWebSocket(engagementId, rtmsStreamId, serverUrl, enga
   engagementData.signalingWs = ws;
 
   ws.on('open', () => {
-    console.log(`[${engagementId}] Signaling WebSocket connected`);
-
     const handshake = {
       msg_type: 1,
       protocol_version: 1,
@@ -60,7 +55,6 @@ function connectToSignalingWebSocket(engagementId, rtmsStreamId, serverUrl, enga
     };
 
     ws.send(JSON.stringify(handshake));
-    console.log(`[${engagementId}] Sent signaling handshake`, 'SIGN', generateSignature(engagementId, rtmsStreamId));
   });
 
   ws.on('message', (data) => {
@@ -69,13 +63,10 @@ function connectToSignalingWebSocket(engagementId, rtmsStreamId, serverUrl, enga
     if (message.msg_type === 2) {
       // Signaling handshake response
       if (message.status_code === 0) {
-        console.log(`[${engagementId}] Signaling handshake successful`);
         const mediaUrl = message.media_server?.server_urls?.audio || message.media_server?.server_urls?.all;
         if (mediaUrl) {
           connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, ws, engagementData);
         }
-      } else {
-        console.error(`[${engagementId}] Signaling handshake failed:`, message.reason);
       }
     } else if (message.msg_type === 12) {
       // Keep-alive request
@@ -84,11 +75,11 @@ function connectToSignalingWebSocket(engagementId, rtmsStreamId, serverUrl, enga
   });
 
   ws.on('error', (error) => {
-    console.error(`[${engagementId}] Signaling WebSocket error:`, error.message);
+    console.error(`Signaling WebSocket error:`, error.message);
   });
 
-  ws.on('close', (code, reason) => {
-    console.log(`[${engagementId}] Signaling WebSocket closed (code: ${code})`);
+  ws.on('close', () => {
+    // Signaling connection closed
   });
 }
 
@@ -98,8 +89,6 @@ function connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, signaling
   engagementData.mediaWs = ws;
 
   ws.on('open', () => {
-    console.log(`[${engagementId}] Media WebSocket connected`);
-
     const handshake = {
       msg_type: 3,
       protocol_version: 1,
@@ -121,7 +110,6 @@ function connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, signaling
     };
 
     ws.send(JSON.stringify(handshake));
-    console.log(`[${engagementId}] Sent media handshake`);
   });
 
   ws.on('message', (data) => {
@@ -130,50 +118,35 @@ function connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, signaling
     if (message.msg_type === 4) {
       // Media handshake response
       if (message.status_code === 0) {
-        console.log(`[${engagementId}] Media handshake successful`);
-
         // Send CLIENT_READY_ACK to signaling connection
         signalingWs.send(JSON.stringify({
           msg_type: 7,
           rtms_stream_id: rtmsStreamId
         }));
-
-        console.log(`[${engagementId}] Ready to receive audio`);
-      } else {
-        console.error(`[${engagementId}] Media handshake failed:`, message.reason);
       }
     } else if (message.msg_type === 12) {
       // Keep-alive request
       ws.send(JSON.stringify({ msg_type: 13, timestamp: message.timestamp }));
     } else if (message.msg_type === 14) {
       // Audio data
-      const { channel_id, data: audioDataBase64, timestamp } = message.content;
-      engagementData.audioChunkCount++;
-
-      // Write audio to WAV file
-      const audioBuffer = Buffer.from(audioDataBase64, 'base64');
+      const audioBuffer = Buffer.from(message.content.data, 'base64');
       engagementData.wavWriter.write(audioBuffer);
-
-      if (engagementData.audioChunkCount % 50 === 0) {
-        console.log(`[${engagementId}] Received ${engagementData.audioChunkCount} audio chunks`);
-      }
+      engagementData.audioChunkCount++;
     }
   });
 
   ws.on('error', (error) => {
-    console.error(`[${engagementId}] Media WebSocket error:`, error.message);
+    console.error(`Media WebSocket error:`, error.message);
   });
 
-  ws.on('close', (code, reason) => {
-    console.log(`[${engagementId}] Media WebSocket closed (code: ${code})`);
+  ws.on('close', () => {
+    // Media connection closed
   });
 }
 
 // Handle RTMS started webhook
 function handleRTMSStarted(payload) {
-  console.log('RTMS STARTED')
   const { engagement_id, rtms_stream_id, server_urls } = payload;
-  console.log('DATA', engagement_id, rtms_stream_id)
 
   if (!engagement_id || !rtms_stream_id || !server_urls) {
     console.error('Invalid payload - missing required fields');
@@ -182,20 +155,16 @@ function handleRTMSStarted(payload) {
 
   // Check for duplicate
   if (activeEngagements.has(engagement_id)) {
-    console.warn(`[${engagement_id}] Connection already exists, skipping`);
     return;
   }
 
   // Reserve this engagement_id immediately to prevent race condition
   activeEngagements.set(engagement_id, { reservedAt: new Date() });
 
-  console.log(`[${engagement_id}] Starting RTMS connection`);
-
   // Setup file paths
   const safeId = engagement_id.replace(/[^a-zA-Z0-9]/g, '_');
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const audioPath = join(audioDir, `audio_${safeId}_${timestamp}.wav`);
-  const transcriptPath = join(transcriptsDir, `transcript_${safeId}_${timestamp}.txt`);
 
   // Create WAV writer
   const wavWriter = new wav.FileWriter(audioPath, {
@@ -204,20 +173,12 @@ function handleRTMSStarted(payload) {
     bitDepth: 16
   });
 
-  // Create transcript stream
-  const transcriptStream = createWriteStream(transcriptPath, { flags: 'a' });
-  transcriptStream.write(`=== RTMS Transcript Started at ${new Date().toISOString()} ===\n`);
-  transcriptStream.write(`Engagement ID: ${engagement_id}\n`);
-  transcriptStream.write(`Stream ID: ${rtms_stream_id}\n\n`);
-
   // Store engagement data
   const engagementData = {
     engagementId: engagement_id,
     rtmsStreamId: rtms_stream_id,
     wavWriter,
     audioPath,
-    transcriptStream,
-    transcriptPath,
     audioChunkCount: 0,
     startedAt: new Date(),
     signalingWs: null,
@@ -230,7 +191,7 @@ function handleRTMSStarted(payload) {
   try {
     connectToSignalingWebSocket(engagement_id, rtms_stream_id, server_urls, engagementData);
   } catch (error) {
-    console.error(`[${engagement_id}] Failed to connect:`, error.message);
+    console.error(`Failed to connect:`, error.message);
     cleanupEngagement(engagement_id);
   }
 }
@@ -244,7 +205,6 @@ async function handleRTMSStopped(payload) {
     return;
   }
 
-  console.log(`[${engagement_id}] Stopping RTMS`);
   await cleanupEngagement(engagement_id);
 }
 
@@ -253,7 +213,6 @@ async function cleanupEngagement(engagementId) {
   const data = activeEngagements.get(engagementId);
 
   if (!data) {
-    console.warn(`[${engagementId}] No active connection found`);
     return;
   }
 
@@ -266,13 +225,6 @@ async function cleanupEngagement(engagementId) {
       data.mediaWs.close();
     }
 
-    // Close transcript
-    if (data.transcriptStream && data.transcriptStream.writable) {
-      data.transcriptStream.write(`\n=== Transcript Ended at ${new Date().toISOString()} ===\n`);
-      data.transcriptStream.end();
-      console.log(`[${engagementId}] Transcript saved: ${data.transcriptPath}`);
-    }
-
     // Close WAV file
     if (data.wavWriter) {
       await new Promise((resolve, reject) => {
@@ -281,14 +233,12 @@ async function cleanupEngagement(engagementId) {
           else resolve();
         });
       });
-      console.log(`[${engagementId}] Audio saved: ${data.audioPath}`);
-      console.log(`[${engagementId}] Total audio chunks: ${data.audioChunkCount}`);
+      console.log(`Audio saved: ${data.audioPath} (${data.audioChunkCount} chunks)`);
     }
   } catch (error) {
-    console.error(`[${engagementId}] Cleanup error:`, error.message);
+    console.error(`Cleanup error:`, error.message);
   } finally {
     activeEngagements.delete(engagementId);
-    console.log(`[${engagementId}] Cleaned up`);
   }
 }
 
@@ -300,8 +250,6 @@ app.use(express.json());
 app.post('/', (req, res) => {
   const { event, payload } = req.body;
 
-  console.log(`\n[Webhook] Event: ${event}`);
-
   if (event === 'contact_center.voice_rtms_started') {
     handleRTMSStarted(payload);
     res.status(200).json({ received: true });
@@ -309,7 +257,6 @@ app.post('/', (req, res) => {
     handleRTMSStopped(payload);
     res.status(200).json({ received: true });
   } else {
-    console.log(`[Webhook] Unknown event: ${event}`);
     res.status(200).json({ received: true });
   }
 });
@@ -325,7 +272,7 @@ app.get('/health', (req, res) => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n\nShutting down...');
+  console.log('Shutting down...');
   for (const [engagementId] of activeEngagements.entries()) {
     await cleanupEngagement(engagementId);
   }
@@ -334,12 +281,10 @@ process.on('SIGINT', async () => {
 
 // Start server
 app.listen(PORT, () => {
-  // console.log('\n='.repeat(50));
   console.log('ZCC RTMS Server');
   console.log('='.repeat(50));
   console.log(`Port: ${PORT}`);
   console.log(`Audio directory: ${audioDir}`);
-  console.log(`Transcripts directory: ${transcriptsDir}`);
   console.log('='.repeat(50));
-  console.log('\n✅ Server ready - waiting for webhooks...\n');
+  console.log('Server ready - waiting for webhooks');
 });

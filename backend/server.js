@@ -14,14 +14,6 @@ const { securityHeaders } = require('./middleware/security');
 
 const app = express();
 const server = http.createServer(app);
-// COMMENTED OUT: Frontend-Backend WebSocket (Socket.IO)
-// const io = new Server(server, {
-//   cors: {
-//     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-//     methods: ['GET', 'POST'],
-//     credentials: true
-//   }
-// });
 
 const PORT = process.env.BACKEND_PORT || 3001;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -61,7 +53,6 @@ const frontendBuildPath = path.join(__dirname, '../frontend/build');
 const fs = require('fs');
 if (fs.existsSync(frontendBuildPath)) {
   app.use(express.static(frontendBuildPath));
-  console.log('📦 Serving frontend build from:', frontendBuildPath);
 }
 
 // Health check
@@ -69,39 +60,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// COMMENTED OUT: Frontend-Backend WebSocket (Socket.IO)
-// WebSocket connection handling
-// io.on('connection', (socket) => {
-//   console.log('✅ Frontend client connected via WebSocket:', socket.id);
-//
-//   socket.on('disconnect', () => {
-//     console.log('❌ Frontend client disconnected:', socket.id);
-//   });
-// });
-
-// Transcript data endpoint from RTMS server
-app.post('/api/rtms/transcript', (req, res) => {
-  const transcript = req.body;
-  console.log('📝 Transcript received from RTMS:', transcript);
-
-  // COMMENTED OUT: Frontend-Backend WebSocket (Socket.IO)
-  // Broadcast transcript to all connected frontend clients
-  // io.emit('transcript-data', transcript);
-  // console.log('✓ Broadcasted transcript to frontend clients');
-
-  res.json({ success: true });
-});
-
 // Debug: Log all incoming requests to /api/webhooks/zoom
 app.use('/api/webhooks/zoom', (req, _res, next) => {
-  // console.log('\n' + '='.repeat(70));
-  console.log('📨 WEBHOOK REQUEST RECEIVED');
-  // console.log('='.repeat(70));
-  // console.log('Method:', req.method);
-  // console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  // console.log('Body:', JSON.stringify(req.body, null, 2));
-  // console.log('Query:', JSON.stringify(req.query, null, 2));
-  // console.log('='.repeat(70) + '\n');
+  console.log('Webhook request received');
   next();
 });
 
@@ -243,7 +204,7 @@ app.post('/api/webhooks/zoom', async (req, res) => {
 
     // Check if we've recently processed this exact webhook
     if (recentWebhooks.has(webhookSignature)) {
-      console.log(`⚠ Duplicate webhook detected (${webhookSignature}), skipping forward`);
+      console.log(`Duplicate webhook detected (${webhookSignature}), skipping forward`);
       return res.status(200).json({ received: true, duplicate: true });
     }
 
@@ -257,13 +218,13 @@ app.post('/api/webhooks/zoom', async (req, res) => {
 
     try {
       const rtmsServerUrl = process.env.RTMS_SERVER_URL || 'http://localhost:8080';
-      console.log(`→ Forwarding ${event} to RTMS server at ${rtmsServerUrl}`);
+      console.log(`Forwarding ${event} to RTMS server at ${rtmsServerUrl}`);
       await axios.post(rtmsServerUrl, req.body, {
         headers: { 'Content-Type': 'application/json' }
       });
-      console.log(`✓ Successfully forwarded ${event} to RTMS server`);
+      console.log(`Successfully forwarded ${event} to RTMS server`);
     } catch (error) {
-      console.error(`✗ Failed to forward ${event} to RTMS server:`, error.message);
+      console.error(`Failed to forward ${event} to RTMS server:`, error.message);
     }
   }
 
@@ -319,15 +280,14 @@ app.use('/', createProxyMiddleware({
   }
 }));
 
-// Start server with Socket.IO
+// Start server
 server.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Frontend URL (OAuth redirects): ${FRONTEND_URL}`);
   console.log(`Frontend Internal URL (proxy): ${FRONTEND_INTERNAL_URL}`);
   console.log(`Public URL: ${process.env.PUBLIC_URL || 'http://localhost:3001'}`);
-  console.log(`\n✅ All requests to http://localhost:${PORT} are proxied to frontend at ${FRONTEND_INTERNAL_URL}`);
-  console.log(`✅ OAuth redirects go to: ${FRONTEND_URL}`);
-  console.log(`✅ API requests to /api/* are handled by this backend`);
-  console.log(`✅ WebSocket server ready for real-time transcripts\n`);
+  console.log(`All requests to http://localhost:${PORT} are proxied to frontend at ${FRONTEND_INTERNAL_URL}`);
+  console.log(`OAuth redirects go to: ${FRONTEND_URL}`);
+  console.log(`API requests to /api/* are handled by this backend`);
 });
