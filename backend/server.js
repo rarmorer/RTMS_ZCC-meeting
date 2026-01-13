@@ -6,8 +6,6 @@ const crypto = require('crypto');
 const path = require('path');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const http = require('http');
-// COMMENTED OUT: Frontend-Backend WebSocket (Socket.IO)
-// const { Server } = require('socket.io');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const { securityHeaders } = require('./middleware/security');
