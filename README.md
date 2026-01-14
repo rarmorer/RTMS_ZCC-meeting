@@ -42,60 +42,6 @@ The application consists of three main services:
   - Receives and saves audio chunks as WAV files
   - Handles engagement lifecycle (start/stop/cleanup)
 
-## Flow Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Zoom Contact Center                          │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Agent using Zoom Apps (Frontend React App)              │  │
-│  │  - Clicks "Start RTMS" button                            │  │
-│  └──────────────────┬────────────────────────────────────────┘  │
-│                     │ POST /api/zoom/rtms/control               │
-│                     │ { action: 'start', engagementId }         │
-└─────────────────────┼───────────────────────────────────────────┘
-                      ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              Backend API Server (Port 3001)                      │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  1. Receives RTMS control request                         │  │
-│  │  2. Calls Zoom Contact Center API:                        │  │
-│  │     PUT /v2/contact_center/{engagementId}/rtms_app/status │  │
-│  │     Body: { action: 'start', settings: { client_id } }    │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                      │
-                      │ Zoom processes request and sends webhook
-                      ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              Backend API Server (Port 3001)                      │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Webhook: contact_center.voice_rtms_started               │  │
-│  │  Payload: { engagement_id, rtms_stream_id, server_urls }  │  │
-│  │  → Forwards to RTMS Server                                │  │
-│  └──────────────────┬────────────────────────────────────────┘  │
-└────────────────────┼────────────────────────────────────────────┘
-                     │ POST http://localhost:8080
-                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              RTMS Server (Port 8080)                             │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  1. Receives webhook with server_urls                     │  │
-│  │  2. Generates HMAC signature for authentication           │  │
-│  │  3. Connects to Zoom Signaling WebSocket                  │  │
-│  │     - Sends handshake with signature                      │  │
-│  │     - Receives media server URL                           │  │
-│  │  4. Connects to Zoom Media WebSocket                      │  │
-│  │     - Sends media handshake (audio, L16, 16kHz, mono)     │  │
-│  │     - Sends CLIENT_READY_ACK to signaling                 │  │
-│  │  5. Receives audio chunks (msg_type: 14)                  │  │
-│  │     - Decodes base64 audio data                           │  │
-│  │     - Writes to WAV file (rtms/data/audio/)               │  │
-│  │  6. On stop: closes connections and saves file            │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
 ## Prerequisites
 
 Before setting up the application, ensure you have:
@@ -113,7 +59,7 @@ Before setting up the application, ensure you have:
 
 1. Go to [Zoom Marketplace](https://marketplace.zoom.us)
 2. Click "Develop" → "Build App"
-3. Select "Contact Center App"
+3. Select "General app"
 4. Fill in basic information:
    - **App Name:** Your app name (e.g., "RTMS Audio Capture")
    - **Short Description:** Brief description
