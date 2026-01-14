@@ -21,42 +21,7 @@ This application automatically captures live audio from Zoom Contact Center enga
 - Duplicate webhook prevention
 - Graceful engagement cleanup
 
-## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                          Zoom Cloud                              │
-│  (Contact Center Engagements + RTMS Media Servers)              │
-└────────────────┬─────────────────────────┬──────────────────────┘
-                 │                         │
-                 │ Webhooks                │ WebSocket Audio Stream
-                 │                         │
-┌────────────────▼─────────────────────────▼──────────────────────┐
-│                       Backend Server                             │
-│  - Receives webhooks from Zoom                                   │
-│  - Forwards RTMS events to RTMS Server                          │
-│  - Handles OAuth authentication                                  │
-│  - Proxies frontend requests                                     │
-│  Port: 3001                                                      │
-└──────────────┬───────────────────────────┬──────────────────────┘
-               │                           │
-               │ Proxies UI                │ Forwards webhooks
-               │                           │
-┌──────────────▼────────────┐   ┌─────────▼────────────────────────┐
-│     Frontend (React)      │   │      RTMS Server                  │
-│  - Zoom App SDK           │   │  - Connects to Zoom media servers │
-│  - User interface         │   │  - Captures audio chunks          │
-│  - Engagement status      │   │  - Writes WAV files               │
-│  Port: 3000               │   │  Port: 8080                       │
-└───────────────────────────┘   └──────────┬───────────────────────┘
-                                           │
-                                           │ Saves audio
-                                           │
-                                ┌──────────▼──────────┐
-                                │   rtms/data/audio/  │
-                                │  (WAV file storage) │
-                                └─────────────────────┘
-```
 
 ## Prerequisites
 
@@ -74,11 +39,9 @@ Before setting up the application, ensure you have:
 
 1. Go to [Zoom Marketplace](https://marketplace.zoom.us/)
 2. Click "Develop" > "Build App"
-3. Select "Zoom Apps" as the app type
+3. Select "General app" as the app type
 4. Fill in basic information:
    - App name: Your app name
-   - Short description: Audio capture for contact center
-   - Long description: Captures real-time audio from Zoom Contact Center engagements
 
 ### 2. Configure App Credentials
 
