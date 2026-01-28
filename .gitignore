@@ -28,12 +28,6 @@ pids
 *.seed
 *.pid.lock
 
-# RTMS data
-rtms/data/audio/*
-rtms/data/video/*
-rtms/data/transcripts/*
-!rtms/data/.gitkeep
-
 # OS
 .DS_Store
 Thumbs.db

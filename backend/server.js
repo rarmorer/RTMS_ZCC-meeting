@@ -177,12 +177,53 @@ app.get('/api/auth/callback', async (req, res) => {
 const recentWebhooks = new Map();
 const WEBHOOK_DEDUP_WINDOW_MS = 5000; // 5 seconds
 
+// Store RTMS status messages for display (keep last 100)
+const statusMessages = [];
+const MAX_STATUS_MESSAGES = 100;
+
+// Add a status message
+function addStatusMessage(message, type = 'info') {
+  const statusMessage = {
+    id: Date.now() + Math.random(),
+    timestamp: new Date().toISOString(),
+    message: message,
+    type: type // 'info', 'success', 'warning', 'error'
+  };
+  statusMessages.unshift(statusMessage);
+  if (statusMessages.length > MAX_STATUS_MESSAGES) {
+    statusMessages.pop();
+  }
+}
+
+// API endpoint to get status messages
+app.get('/api/webhooks/events', (req, res) => {
+  res.json({ events: statusMessages });
+});
+
+// API endpoint for RTMS server to post status updates
+app.post('/api/rtms/status', (req, res) => {
+  const { message, type } = req.body;
+  if (message) {
+    addStatusMessage(message, type || 'info');
+  }
+  res.status(200).json({ received: true });
+});
+
 // Webhook endpoint for Zoom events
 app.post('/api/webhooks/zoom', async (req, res) => {
   const { event, payload } = req.body;
 
   console.log('Webhook received:', event);
   console.log('Payload:', JSON.stringify(payload, null, 2));
+
+  // Create simplified status messages for RTMS events
+  if (event === 'contact_center.voice_rtms_started') {
+    const engagementId = payload?.engagement_id || 'unknown';
+    addStatusMessage(`Starting RTMS connection for engagement ${engagementId}`, 'info');
+  } else if (event === 'contact_center.voice_rtms_stopped') {
+    const engagementId = payload?.engagement_id || 'unknown';
+    addStatusMessage(`RTMS stopped for engagement ${engagementId}`, 'success');
+  }
 
   // Handle URL validation
   if (event === 'endpoint.url_validation') {

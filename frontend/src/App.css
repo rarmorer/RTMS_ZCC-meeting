@@ -377,6 +377,113 @@
   color: white;
 }
 
+/* RTMS Status Styling */
+.webhook-events-section {
+  border-bottom: none;
+}
+
+.webhook-events-container {
+  max-height: 400px;
+  overflow-y: auto;
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 15px;
+  border: 1px solid #333;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.no-events {
+  text-align: center;
+  color: #888;
+  padding: 20px;
+  font-style: italic;
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-message {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.2s ease;
+  font-size: 0.9em;
+}
+
+.status-message:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.status-message-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-message.status-info .status-indicator {
+  background: #2196f3;
+  box-shadow: 0 0 8px #2196f3;
+}
+
+.status-message.status-success .status-indicator {
+  background: #4caf50;
+  box-shadow: 0 0 8px #4caf50;
+}
+
+.status-message.status-warning .status-indicator {
+  background: #ff9800;
+  box-shadow: 0 0 8px #ff9800;
+}
+
+.status-message.status-error .status-indicator {
+  background: #f44336;
+  box-shadow: 0 0 8px #f44336;
+}
+
+.status-text {
+  color: #e0e0e0;
+}
+
+.status-timestamp {
+  font-size: 0.85em;
+  color: #888;
+  flex-shrink: 0;
+  margin-left: 15px;
+}
+
+/* Custom scrollbar for webkit browsers */
+.webhook-events-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.webhook-events-container::-webkit-scrollbar-track {
+  background: #2e2e2e;
+  border-radius: 4px;
+}
+
+.webhook-events-container::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.webhook-events-container::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
 @media (max-width: 600px) {
   .App {
     padding: 10px;

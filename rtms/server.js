@@ -1,11 +1,10 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { mkdirSync, existsSync } from 'fs';
 import dotenv from 'dotenv';
-import wav from 'wav';
 import express from 'express';
 import crypto from 'crypto';
 import WebSocket from 'ws';
+import axios from 'axios';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,16 +15,19 @@ dotenv.config({ path: join(__dirname, '../.env') });
 const PORT = process.env.PORT || 8080;
 const CLIENT_ID = process.env.ZOOM_APP_CLIENT_ID;
 const CLIENT_SECRET = process.env.ZOOM_APP_CLIENT_SECRET;
+const BACKEND_URL = process.env.BACKEND_URL || 'http://backend:3001';
 
-// Ensure data directories exist
-const dataDir = join(__dirname, 'data');
-const audioDir = join(dataDir, 'audio');
-
-[dataDir, audioDir].forEach(dir => {
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+// Send status update to backend for UI display
+async function sendStatusUpdate(message, type = 'info') {
+  try {
+    await axios.post(`${BACKEND_URL}/api/rtms/status`, {
+      message,
+      type
+    });
+  } catch (error) {
+    // Silently fail if backend is not available
   }
-});
+}
 
 // Store active engagements
 const activeEngagements = new Map();
@@ -143,15 +145,11 @@ function connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, signaling
       ws.send(JSON.stringify({ msg_type: 13, timestamp: message.timestamp }));
     } else if (message.msg_type === 14) {
       // Audio data
-      const { channel_id, data: audioDataBase64, timestamp } = message.content;
       engagementData.audioChunkCount++;
-
-      // Write audio to WAV file
-      const audioBuffer = Buffer.from(audioDataBase64, 'base64');
-      engagementData.wavWriter.write(audioBuffer);
 
       if (engagementData.audioChunkCount % 50 === 0) {
         console.log(`[${engagementId}] Received ${engagementData.audioChunkCount} audio chunks`);
+        sendStatusUpdate(`Received ${engagementData.audioChunkCount} audio chunks`, 'success');
       }
     }
   });
@@ -184,25 +182,12 @@ function handleRTMSStarted(payload) {
   activeEngagements.set(engagement_id, { reservedAt: new Date() });
 
   console.log(`[${engagement_id}] Starting RTMS connection`);
-
-  // Setup file paths
-  const safeId = engagement_id.replace(/[^a-zA-Z0-9]/g, '_');
-  const timestamp = new Date().toISOString().replace(/[:. ]/g, '-');
-  const audioPath = join(audioDir, `audio_${safeId}_${timestamp}.wav`);
-
-  // Create WAV writer
-  const wavWriter = new wav.FileWriter(audioPath, {
-    sampleRate: 16000,
-    channels: 1,
-    bitDepth: 16
-  });
+  sendStatusUpdate(`Starting RTMS connection`, 'info');
 
   // Store engagement data
   const engagementData = {
     engagementId: engagement_id,
     rtmsStreamId: rtms_stream_id,
-    wavWriter,
-    audioPath,
     audioChunkCount: 0,
     startedAt: new Date(),
     signalingWs: null,
@@ -230,6 +215,7 @@ async function handleRTMSStopped(payload) {
   }
 
   console.log(`[${engagement_id}] Stopping RTMS`);
+  sendStatusUpdate(`RTMS stopped`, 'success');
   await cleanupEngagement(engagement_id);
 }
 
@@ -251,17 +237,7 @@ async function cleanupEngagement(engagementId) {
       data.mediaWs.close();
     }
 
-    // Close WAV file
-    if (data.wavWriter) {
-      await new Promise((resolve, reject) => {
-        data.wavWriter.end((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-      console.log(`[${engagementId}] Audio saved: ${data.audioPath}`);
-      console.log(`[${engagementId}] Total audio chunks: ${data.audioChunkCount}`);
-    }
+    console.log(`[${engagementId}] Total audio chunks received: ${data.audioChunkCount}`);
   } catch (error) {
     console.error(`[${engagementId}] Cleanup error:`, error.message);
   } finally {
@@ -315,7 +291,7 @@ app.listen(PORT, () => {
   console.log('ZCC RTMS Server');
   console.log('='.repeat(50));
   console.log(`Port: ${PORT}`);
-  console.log(`Audio directory: ${audioDir}`);
+  console.log(`Backend URL: ${BACKEND_URL}`);
   console.log('='.repeat(50));
   console.log('\nServer ready - waiting for webhooks...\n');
 });

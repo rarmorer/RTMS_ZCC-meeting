@@ -9,7 +9,7 @@ async function handleRtmsControl(req, res) {
 
   const { engagementId, action } = req.body;
   const clientId = process.env.ZOOM_APP_CLIENT_ID;
-  const accessToken = req.session.accessToken;
+  const bearerToken = process.env.ZOOM_BEARER_TOKEN;
 
   if (!engagementId || !action) {
     console.error('Missing required fields:', { engagementId, action });
@@ -18,10 +18,10 @@ async function handleRtmsControl(req, res) {
     });
   }
 
-  if (!accessToken) {
-    console.error('No access token found in session');
-    return res.status(401).json({
-      error: 'Not authenticated. Please complete OAuth flow.'
+  if (!bearerToken) {
+    console.error('ZOOM_BEARER_TOKEN not configured in environment');
+    return res.status(500).json({
+      error: 'Server configuration error: Bearer token not found'
     });
   }
 
@@ -56,7 +56,7 @@ async function handleRtmsControl(req, res) {
       },
       {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${bearerToken}`,
           'Content-Type': 'application/json'
         }
       }

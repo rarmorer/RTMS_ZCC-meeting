@@ -78,8 +78,6 @@ services:
       - ./rtms:/app:delegated
       # Prevent overwriting node_modules
       - rtms-node-modules:/app/node_modules
-      # Persist audio and transcript data
-      - ./rtms/data:/app/data:delegated
       # Mount shared .env file
       - ./.env:/app/../.env:ro
     networks:

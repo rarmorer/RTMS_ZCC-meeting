@@ -10,6 +10,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [rtmsActive, setRtmsActive] = useState(false);
+  const [webhookEvents, setWebhookEvents] = useState([]);
 
   // Check for OAuth redirect with auth status
   useEffect(() => {
@@ -25,6 +26,27 @@ function App() {
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+  }, []);
+
+  // Poll for webhook events
+  useEffect(() => {
+    const fetchWebhookEvents = async () => {
+      try {
+        const response = await fetch('/api/webhooks/events');
+        const data = await response.json();
+        setWebhookEvents(data.events || []);
+      } catch (err) {
+        console.error('Error fetching webhook events:', err);
+      }
+    };
+
+    // Initial fetch
+    fetchWebhookEvents();
+
+    // Poll every 2 seconds
+    const interval = setInterval(fetchWebhookEvents, 2000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Initialize Zoom SDK
@@ -65,8 +87,8 @@ function App() {
     setMessage('');
 
     try {
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
-      const response = await fetch(`${backendUrl}/api/zoom/rtms/control`, {
+      // Use relative URL since backend proxies to frontend
+      const response = await fetch('/api/zoom/rtms/control', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,8 +121,8 @@ function App() {
     setMessage('');
 
     try {
-      const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
-      const response = await fetch(`${backendUrl}/api/zoom/rtms/control`, {
+      // Use relative URL since backend proxies to frontend
+      const response = await fetch('/api/zoom/rtms/control', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,9 +213,29 @@ function App() {
               {loading ? 'Stopping...' : 'Stop RTMS'}
             </button>
           </div>
-          <p className="note">
-            Webhook events (RTMS started/stopped, audio received) will be logged in the backend terminal.
-          </p>
+        </div>
+
+        <div className="section webhook-events-section">
+          <h3>RTMS Status</h3>
+          <div className="webhook-events-container">
+            {webhookEvents.length === 0 ? (
+              <p className="no-events">No status messages yet</p>
+            ) : (
+              <div className="events-list">
+                {webhookEvents.map((event) => (
+                  <div key={event.id} className={`status-message status-${event.type}`}>
+                    <div className="status-message-content">
+                      <span className="status-indicator"></span>
+                      <span className="status-text">{event.message}</span>
+                    </div>
+                    <span className="status-timestamp">
+                      {new Date(event.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="footer">
