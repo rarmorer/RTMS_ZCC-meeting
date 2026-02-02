@@ -86,6 +86,25 @@ docker-compose restart
 - Enable **Contact Center** as app location
 - Set **Home URL**: `https://your-ngrok-url.ngrok-free.app`
 
+**Scopes Tab:**
+- Add: `zoomapp:incontactcenter`
+
+**Event Subscriptions Tab:**
+- Enable Event Subscriptions
+- Set **Event notification endpoint URL**: `https://your-ngrok-url.ngrok-free.app/api/webhooks/zoom`
+- Add these event types:
+  - `contact_center.engagement_started` ⚠️ **Required** - Enables Start/Stop buttons
+  - `contact_center.engagement_ended` ⚠️ **Required** - Disables buttons when engagement ends
+  - `contact_center.voice_rtms_started` - Shows RTMS start status
+  - `contact_center.voice_rtms_stopped` - Shows RTMS stop status
+- Copy the Secret Token to your `.env` as `ZOOM_SECRET_TOKEN`
+
+**RTMS Tab:**
+- Enable RTMS
+
+**Activation Tab:**
+- Install the app to your account
+
 ### Generate Bearer Token (Manual OAuth)
 
 To generate a bearer token for API calls:
@@ -166,9 +185,16 @@ Status messages appear in the terminal-style display:
 - Verify ngrok URL is set in both `.env` and Zoom Marketplace
 - Check webhook URL matches: `https://your-ngrok-url.ngrok-free.app/api/webhooks/zoom`
 
-**Can't start RTMS?**
+**Buttons are greyed out / Can't start RTMS?**
+- Make sure you've subscribed to `contact_center.engagement_started` and `contact_center.engagement_ended` webhooks in Zoom Marketplace
+- Start an engagement in Zoom Contact Center
+- Check backend logs for "Engagement started" message: `docker-compose logs -f backend`
+- Verify the webhook is received: Look for `[Engagement Started]` in backend logs
+- Check active engagement API: `curl http://localhost:3001/api/engagement/active`
+- If webhook received but buttons still greyed: Check browser console for errors
+
+**Can't start RTMS after buttons enabled?**
 - Verify `ZOOM_BEARER_TOKEN` is set in `.env`
-- Check that you're in an active engagement
 - View backend logs: `docker-compose logs -f backend`
 
 **Status messages not appearing?**

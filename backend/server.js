@@ -181,6 +181,9 @@ const WEBHOOK_DEDUP_WINDOW_MS = 5000; // 5 seconds
 const statusMessages = [];
 const MAX_STATUS_MESSAGES = 100;
 
+// Store active engagements (engagement_id -> engagement data)
+const activeEngagements = new Map();
+
 // Add a status message
 function addStatusMessage(message, type = 'info') {
   const statusMessage = {
@@ -209,12 +212,55 @@ app.post('/api/rtms/status', (req, res) => {
   res.status(200).json({ received: true });
 });
 
+// API endpoint to get active engagement
+app.get('/api/engagement/active', (req, res) => {
+  // Get the most recent active engagement
+  const activeEngagement = Array.from(activeEngagements.values())
+    .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt))[0];
+
+  if (activeEngagement) {
+    res.json({
+      isActive: true,
+      engagementId: activeEngagement.engagementId,
+      startedAt: activeEngagement.startedAt
+    });
+  } else {
+    res.json({
+      isActive: false,
+      engagementId: null
+    });
+  }
+});
+
 // Webhook endpoint for Zoom events
 app.post('/api/webhooks/zoom', async (req, res) => {
   const { event, payload } = req.body;
 
   console.log('Webhook received:', event);
   console.log('Payload:', JSON.stringify(payload, null, 2));
+
+  // Track engagement lifecycle
+  if (event === 'contact_center.engagement_started') {
+    const engagementId = payload?.object?.engagement_id || payload?.engagement_id;
+    if (engagementId) {
+      activeEngagements.set(engagementId, {
+        engagementId: engagementId,
+        startedAt: new Date().toISOString(),
+        payload: payload
+      });
+      console.log(`[${engagementId}] Engagement started - now active`);
+      addStatusMessage(`Engagement ${engagementId} started`, 'info');
+    } else {
+      console.error('[Engagement Started] Could not find engagement_id in payload!');
+    }
+  } else if (event === 'contact_center.engagement_ended') {
+    const engagementId = payload?.object?.engagement_id || payload?.engagement_id;
+    if (engagementId) {
+      activeEngagements.delete(engagementId);
+      console.log(`[${engagementId}] Engagement ended - removed from active list`);
+      addStatusMessage(`Engagement ${engagementId} ended`, 'info');
+    }
+  }
 
   // Create simplified status messages for RTMS events
   if (event === 'contact_center.voice_rtms_started') {

@@ -3,13 +3,11 @@ import zoomSdk from '@zoom/appssdk';
 import './App.css';
 
 function App() {
-  const [zoomInitialized, setZoomInitialized] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [engagementId, setEngagementId] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [rtmsActive, setRtmsActive] = useState(false);
   const [webhookEvents, setWebhookEvents] = useState([]);
 
   // Check for OAuth redirect with auth status
@@ -49,7 +47,35 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Initialize Zoom SDK
+  // Poll for active engagement from backend
+  useEffect(() => {
+    const fetchActiveEngagement = async () => {
+      try {
+        const response = await fetch('/api/engagement/active');
+        const data = await response.json();
+
+        if (data.isActive && data.engagementId) {
+          setIsActive(true);
+          setEngagementId(data.engagementId);
+        } else {
+          setIsActive(false);
+          setEngagementId(null);
+        }
+      } catch (err) {
+        console.error('Error fetching active engagement:', err);
+      }
+    };
+
+    // Initial fetch
+    fetchActiveEngagement();
+
+    // Poll every 2 seconds
+    const interval = setInterval(fetchActiveEngagement, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Initialize Zoom SDK (optional - fallback to webhook-based engagement tracking)
   useEffect(() => {
     async function initializeZoomSdk() {
       try {
@@ -58,23 +84,26 @@ function App() {
           capabilities: ['getEngagementContext', 'getEngagementStatus']
         });
 
-        setZoomInitialized(true);
+        console.log('Zoom SDK initialized successfully');
 
-        // Get engagement context
+        // Get engagement context from SDK (but don't rely on it exclusively)
         const context = await zoomSdk.getEngagementContext();
         if (context?.engagementContext?.engagementId) {
-          setEngagementId(context.engagementContext.engagementId);
+          console.log('Engagement ID from SDK:', context.engagementContext.engagementId);
+          // Only set if we don't already have one from webhooks
+          setEngagementId(prev => prev || context.engagementContext.engagementId);
         }
 
-        // Get engagement status and check if active
+        // Get engagement status from SDK
         const status = await zoomSdk.getEngagementStatus();
         if (status?.engagementStatus?.state === 'active') {
+          console.log('Engagement is active (from SDK)');
           setIsActive(true);
         }
 
       } catch (error) {
-        console.error('Failed to initialize Zoom SDK:', error);
-        setError(`SDK initialization failed: ${error.message}`);
+        console.warn('Zoom SDK initialization failed (app will use webhook-based tracking):', error);
+        // Don't show error to user - app works without SDK via webhooks
       }
     }
 
@@ -103,8 +132,7 @@ function App() {
       const data = await response.json();
 
       if (response.ok) {
-        setRtmsActive(true);
-        setMessage('RTMS started successfully');
+                setMessage('RTMS started successfully');
       } else {
         setError(data.error || 'Failed to start RTMS');
       }
@@ -137,8 +165,7 @@ function App() {
       const data = await response.json();
 
       if (response.ok) {
-        setRtmsActive(false);
-        setMessage('RTMS stopped successfully');
+                setMessage('RTMS stopped successfully');
       } else {
         setError(data.error || 'Failed to stop RTMS');
       }
@@ -148,18 +175,6 @@ function App() {
       setLoading(false);
     }
   };
-
-  if (!zoomInitialized) {
-    return (
-      <div className="App">
-        <div className="container">
-          <div className="loading-container">
-            <h2>Initializing Zoom SDK...</h2>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="App">
