@@ -68,6 +68,10 @@ function connectToSignalingWebSocket(engagementId, rtmsStreamId, serverUrl, enga
           connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, ws, engagementData);
         }
       }
+    } else if (message.msg_type === 6) {
+      // Event subscription response
+        console.log(message);
+    
     } else if (message.msg_type === 12) {
       // Keep-alive request
       ws.send(JSON.stringify({ msg_type: 13, timestamp: message.timestamp }));
@@ -123,6 +127,13 @@ function connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, signaling
           msg_type: 7,
           rtms_stream_id: rtmsStreamId
         }));
+
+        // Subscribe to RTMS events
+        signalingWs.send(JSON.stringify({
+          msg_type: 5,
+          rtms_stream_id: rtmsStreamId,
+          events: [1, 2, 3, 4]
+        }));
       }
     } else if (message.msg_type === 12) {
       // Keep-alive request
@@ -132,6 +143,11 @@ function connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, signaling
       const audioBuffer = Buffer.from(message.content.data, 'base64');
       engagementData.wavWriter.write(audioBuffer);
       engagementData.audioChunkCount++;
+
+      // Log audio chunk reception every 100 chunks
+      if (engagementData.audioChunkCount % 100 === 0) {
+        console.log(`🎵 Audio chunk received: ${engagementData.audioChunkCount} (${audioBuffer.length} bytes)`);
+      }
     }
   });
 
