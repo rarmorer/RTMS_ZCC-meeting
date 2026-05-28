@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 // Load environment variables
 dotenv.config({ path: join(__dirname, '../.env') });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.RTMS_PORT || 8080;
 const CLIENT_ID = process.env.ZOOM_APP_CLIENT_ID;
 const CLIENT_SECRET = process.env.ZOOM_APP_CLIENT_SECRET;
 
