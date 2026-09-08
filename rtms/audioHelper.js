@@ -23,6 +23,16 @@ export function getChannelWavPath(sessionDir, channelId) {
   return path.join(sessionDir, `channel_${channelId}.wav`);
 }
 
+// Generate silence buffer for a given duration in milliseconds
+// Format: 16kHz, 16-bit PCM (2 bytes per sample)
+export function generateSilence(durationMs) {
+  const sampleRate = 16000;
+  const bytesPerSample = 2;
+  const numSamples = Math.floor((durationMs / 1000) * sampleRate);
+  const numBytes = numSamples * bytesPerSample;
+  return Buffer.alloc(numBytes, 0);
+}
+
 export function saveRawAudio(chunk, rawPath) {
   const dir = path.dirname(rawPath);
   if (!fs.existsSync(dir)) {

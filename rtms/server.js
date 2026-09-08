@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import crypto from 'crypto';
 import WebSocket from 'ws';
-import { saveRawAudio, convertRawToWav, closeRawStream, closeAllAudioStreams, makeSessionTimestamp, getChannelRawPath, getChannelWavPath, finalizeInterleavedWav } from './audioHelper.js';
+import { saveRawAudio, convertRawToWav, closeRawStream, closeAllAudioStreams, makeSessionTimestamp, getChannelRawPath, getChannelWavPath, finalizeInterleavedWav, generateSilence } from './audioHelper.js';
 import { appendFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -161,17 +161,51 @@ function connectToMediaWebSocket(mediaUrl, engagementId, rtmsStreamId, signaling
       // Audio data
       const audioBuffer = Buffer.from(message.content.data, 'base64');
       const channelId = message.content.channel_id;
+      const timestamp = message.content.timestamp; // milliseconds
 
+      // Jitter threshold: ~40ms (2x the 20ms send rate)
+      const JITTER_THRESHOLD_MS = 40;
+
+      // Initialize session start timestamp with first packet
+      if (engagementData.sessionStartTimestamp === null) {
+        engagementData.sessionStartTimestamp = timestamp;
+      }
+
+      // Initialize channel if new
       if (!engagementData.channelPaths.has(channelId)) {
         const rawPath = getChannelRawPath(engagementData.sessionDir, channelId);
         const wavPath = getChannelWavPath(engagementData.sessionDir, channelId);
         engagementData.channelPaths.set(channelId, { rawPath, wavPath });
+        engagementData.channelTimestamps.set(channelId, {
+          firstTimestamp: timestamp,
+          lastTimestamp: timestamp
+        });
         console.log(`🎙️  New channel ${channelId} → ${rawPath}`);
-      } 
 
+        // Late-start case: if this channel starts after session start, pad with silence
+        const lateStartGapMs = timestamp - engagementData.sessionStartTimestamp;
+        if (lateStartGapMs > JITTER_THRESHOLD_MS) {
+          const silenceBuffer = generateSilence(lateStartGapMs);
+          saveRawAudio(silenceBuffer, rawPath);
+          console.log(`⏸️  Channel ${channelId}: inserted ${lateStartGapMs}ms silence (late start)`);
+        }
+      }
 
       const { rawPath } = engagementData.channelPaths.get(channelId);
+      const channelTimestamp = engagementData.channelTimestamps.get(channelId);
+
+      // Pause/resume case: detect gap in this channel's timeline
+      const timeSinceLastPacket = timestamp - channelTimestamp.lastTimestamp;
+      if (timeSinceLastPacket > JITTER_THRESHOLD_MS) {
+        const gapMs = timeSinceLastPacket;
+        const silenceBuffer = generateSilence(gapMs);
+        saveRawAudio(silenceBuffer, rawPath);
+        console.log(`⏸️  Channel ${channelId}: inserted ${gapMs}ms silence (pause/resume gap)`);
+      }
+
+      // Save the audio chunk
       saveRawAudio(audioBuffer, rawPath);
+      channelTimestamp.lastTimestamp = timestamp;
       engagementData.audioChunkCount++;
 
       if (engagementData.audioChunkCount % 100 === 0) {
@@ -221,11 +255,13 @@ function handleRTMSStarted(payload) {
     rtmsStreamId: rtms_stream_id,
     serverUrl: server_urls,
     sessionDir,
-    channelPaths: new Map(), // channelId -> { rawPath, wavPath }
+    channelPaths: new Map(), // channelId -> { rawPath, wavPath, lastTimestamp }
     audioChunkCount: 0,
     startedAt: new Date(),
     signalingWs: null,
-    mediaWs: null
+    mediaWs: null,
+    sessionStartTimestamp: null, // First audio packet timestamp across all channels
+    channelTimestamps: new Map() // channelId -> { lastTimestamp, firstTimestamp }
   };
 
   activeEngagements.set(engagement_id, engagementData);
